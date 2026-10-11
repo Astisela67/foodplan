@@ -1,23 +1,13 @@
 import 'package:flutter/material.dart';
+import '../model/recipe.dart';
+import 'recipe_image.dart';
 
 /// Kartu satu resep pada halaman Resep (FR-10, FR-11).
 class RecipeCard extends StatelessWidget {
-  final String name;
-  final Color color;
-  final int cookTime;
-  final int calories;
-  final double rating;
+  final Recipe recipe;
   final VoidCallback onTap;
 
-  const RecipeCard({
-    super.key,
-    required this.name,
-    required this.color,
-    required this.cookTime,
-    required this.calories,
-    required this.rating,
-    required this.onTap,
-  });
+  const RecipeCard({super.key, required this.recipe, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -34,20 +24,16 @@ class RecipeCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
-            ),
+            RecipeImage(recipe: recipe, width: 64, height: 64),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text(recipe.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   const SizedBox(height: 4),
                   Text(
-                    '$cookTime menit · $calories kkal',
+                    '${recipe.time} menit · ${recipe.calories} kkal',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 2),
@@ -55,7 +41,11 @@ class RecipeCard extends StatelessWidget {
                     children: [
                       const Icon(Icons.star_rounded, size: 14, color: Color(0xFFFFA000)),
                       const SizedBox(width: 2),
-                      Text('$rating', style: const TextStyle(fontSize: 12)),
+                      Text('${recipe.rating}', style: const TextStyle(fontSize: 12)),
+                      if (recipe.vegetarian) ...[
+                        const SizedBox(width: 8),
+                        const Text('🌱 Vegetarian', style: TextStyle(fontSize: 11, color: Color(0xFF2E7D32))),
+                      ],
                     ],
                   ),
                 ],

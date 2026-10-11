@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
 import '../widget/app_text_field.dart';
 import '../widget/primary_button.dart';
 import 'login_screen.dart';
-import 'main_shell.dart';
 
-/// Halaman Registrasi (Daftar) — FR-02, FR-04.
-/// Mengikuti SRD (autentikasi berbasis username), bukan field Email pada
-/// wireframe — sesuaikan jika kelas memutuskan tetap memakai Email.
+/// Halaman Registrasi (Daftar) — FR-02, FR-04. Berbasis username (SRD 1.5).
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -20,24 +19,54 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   String? _errorText;
+  bool _loading = false;
 
-  void _handleRegister() {
-    // FR-04: validasi input akun sebelum data dikirim.
-    if (_usernameController.text.trim().isEmpty) {
-      setState(() => _errorText = 'Username wajib diisi');
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  String? _validate() {
+    final username = _usernameController.text.trim();
+    if (_nameController.text.trim().isEmpty) return 'Nama lengkap wajib diisi';
+    if (username.isEmpty) return 'Username wajib diisi';
+    if (username.length < 3) return 'Username minimal 3 karakter';
+    if (!RegExp(r'^[a-zA-Z0-9_.]+$').hasMatch(username)) {
+      return 'Username hanya boleh huruf, angka, titik, dan garis bawah';
+    }
+    if (_passwordController.text.length < 6) return 'Kata sandi minimal 6 karakter';
+    if (_passwordController.text != _confirmController.text) return 'Konfirmasi kata sandi tidak cocok';
+    return null;
+  }
+
+  Future<void> _handleRegister() async {
+    final err = _validate();
+    if (err != null) {
+      setState(() => _errorText = err);
       return;
     }
-    if (_passwordController.text != _confirmController.text) {
-      setState(() => _errorText = 'Konfirmasi kata sandi tidak cocok');
+    setState(() {
+      _errorText = null;
+      _loading = true;
+    });
+    final res = await context.read<AppState>().register(
+          _nameController.text,
+          _usernameController.text,
+          _passwordController.text,
+        );
+    if (!mounted) return;
+    if (res != null) {
+      setState(() {
+        _errorText = res;
+        _loading = false;
+      });
       return;
     }
-    setState(() => _errorText = null);
-
-    // TODO: ganti dengan pemanggilan AuthRepository/REST API sungguhan.
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const MainShell()),
-      (route) => false,
-    );
+    Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
   @override
@@ -60,19 +89,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Text('Buat akun baru untuk memulai perjalanan sehatmu!',
                   style: TextStyle(color: Colors.grey.shade600)),
               const SizedBox(height: 24),
-              AppTextField(hint: 'Nama Lengkap', icon: Icons.person_outline_rounded, controller: _nameController),
+              AppTextField(
+                  hint: 'Nama Lengkap',
+                  icon: Icons.person_outline_rounded,
+                  controller: _nameController,
+                  textInputAction: TextInputAction.next),
               const SizedBox(height: 14),
-              AppTextField(hint: 'Username', icon: Icons.alternate_email_rounded, controller: _usernameController),
+              AppTextField(
+                  hint: 'Username',
+                  icon: Icons.alternate_email_rounded,
+                  controller: _usernameController,
+                  textInputAction: TextInputAction.next),
               const SizedBox(height: 14),
-              AppTextField(hint: 'Kata Sandi', icon: Icons.lock_outline_rounded, obscure: true, controller: _passwordController),
+              AppTextField(
+                  hint: 'Kata Sandi (min. 6 karakter)',
+                  icon: Icons.lock_outline_rounded,
+                  obscure: true,
+                  controller: _passwordController,
+                  textInputAction: TextInputAction.next),
               const SizedBox(height: 14),
-              AppTextField(hint: 'Konfirmasi Kata Sandi', icon: Icons.lock_outline_rounded, obscure: true, controller: _confirmController),
+              AppTextField(
+                  hint: 'Konfirmasi Kata Sandi',
+                  icon: Icons.lock_outline_rounded,
+                  obscure: true,
+                  controller: _confirmController,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _handleRegister()),
               if (_errorText != null) ...[
                 const SizedBox(height: 10),
                 Text(_errorText!, style: const TextStyle(color: Colors.red, fontSize: 12)),
               ],
               const SizedBox(height: 20),
-              PrimaryButton(label: 'Daftar', onPressed: _handleRegister),
+              PrimaryButton(label: 'Daftar', onPressed: _handleRegister, loading: _loading),
               const SizedBox(height: 16),
               Center(
                 child: GestureDetector(

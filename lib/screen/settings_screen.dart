@@ -1,72 +1,80 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
+import '../util/ui_helpers.dart';
 import '../widget/settings_tile.dart';
+import 'edit_profile_screen.dart';
+import 'goals_screen.dart';
 
 /// Halaman Pengaturan — FR-20.
-/// Catatan: bagian NOTIFIKASI mengikuti wireframe, tetapi SRD versi 1.5
-/// mencatat fitur pengingat/notifikasi (F-13) telah DIHAPUS dari lingkup.
-/// Toggle di bawah ini murni tampilan (belum menyimpan apa pun) sampai
-/// keputusan akhir mengenai fitur ini diambil.
-class SettingsScreen extends StatefulWidget {
+/// Fitur pengingat/notifikasi (F-13) sudah dihapus dari lingkup SRD 1.5,
+/// sehingga bagian NOTIFIKASI diganti dengan bagian DATA.
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool _reminderEat = true;
-  bool _reminderDrink = true;
+  void _push(BuildContext context, Widget page) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
 
   @override
   Widget build(BuildContext context) {
+    final s = context.watch<AppState>();
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pengaturan'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.black87,
-      ),
+      appBar: AppBar(title: const Text('Pengaturan')),
       body: SafeArea(
         top: false,
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           children: [
             _sectionLabel('AKUN'),
-            SettingsTile(icon: Icons.person_outline_rounded, label: 'Informasi Akun', onTap: () {}),
-            const Divider(height: 1),
-            SettingsTile(icon: Icons.lock_outline_rounded, label: 'Ubah Kata Sandi', onTap: () {}),
-            _sectionLabel('PREFERENSI'),
-            SettingsTile(icon: Icons.flag_outlined, label: 'Tujuan & Target', onTap: () {}),
-            const Divider(height: 1),
-            SettingsTile(icon: Icons.restaurant_menu_rounded, label: 'Preferensi Makanan', onTap: () {}),
-            _sectionLabel('NOTIFIKASI'),
             SettingsTile(
-              icon: Icons.notifications_none_rounded,
-              label: 'Pengingat Makan',
+                icon: Icons.person_outline_rounded,
+                label: 'Informasi Akun',
+                onTap: () => _push(context, const EditProfileScreen())),
+            _sectionLabel('PREFERENSI'),
+            SettingsTile(
+                icon: Icons.flag_outlined,
+                label: 'Tujuan & Target',
+                onTap: () => _push(context, const GoalsScreen())),
+            const Divider(height: 1),
+            SettingsTile(
+              icon: Icons.restaurant_menu_rounded,
+              label: 'Hanya resep vegetarian',
               trailing: Switch(
-                value: _reminderEat,
-                activeColor: const Color(0xFF2E7D32),
-                onChanged: (v) => setState(() => _reminderEat = v),
+                value: s.vegOnly,
+                activeColor: kGreen,
+                onChanged: (v) => s.setVegOnly(v),
               ),
             ),
-            const Divider(height: 1),
+            _sectionLabel('DATA'),
             SettingsTile(
-              icon: Icons.water_drop_outlined,
-              label: 'Pengingat Minum',
-              trailing: Switch(
-                value: _reminderDrink,
-                activeColor: const Color(0xFF2E7D32),
-                onChanged: (v) => setState(() => _reminderDrink = v),
-              ),
+              icon: Icons.delete_sweep_outlined,
+              label: 'Hapus Semua Rencana Menu',
+              onTap: () async {
+                final ok = await showConfirm(context, 'Hapus Rencana',
+                    'Semua rencana menu akan dihapus dan tidak bisa dikembalikan. Lanjutkan?',
+                    confirmLabel: 'Hapus', danger: true);
+                if (ok && context.mounted) {
+                  s.clearPlan();
+                  showSnack(context, 'Semua rencana menu dihapus');
+                }
+              },
             ),
             _sectionLabel('LAINNYA'),
-            SettingsTile(icon: Icons.info_outline_rounded, label: 'Tentang FoodPlan', onTap: () {}),
-            const Divider(height: 1),
             SettingsTile(
-              icon: Icons.logout_rounded,
-              label: 'Keluar',
-              labelColor: Colors.red,
-              onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              icon: Icons.info_outline_rounded,
+              label: 'Tentang FoodPlan',
+              onTap: () => showAboutDialog(
+                context: context,
+                applicationName: 'FoodPlan',
+                applicationVersion: '1.0.0',
+                applicationIcon: const Icon(Icons.ramen_dining_rounded, color: kGreen, size: 36),
+                children: const [
+                  SizedBox(height: 8),
+                  Text('Aplikasi perencana menu sehat: susun menu mingguan, pantau nutrisi harian, '
+                      'dan buat daftar belanja otomatis.'),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
           ],

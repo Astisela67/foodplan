@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
 import '../widget/app_text_field.dart';
 import '../widget/primary_button.dart';
-import 'main_shell.dart';
 import 'register_screen.dart';
 
-/// Halaman Masuk (Login) — FR-03.
-/// Catatan: wireframe menggunakan field Email, sedangkan SRD versi 1.5
-/// menetapkan autentikasi berbasis username tanpa fitur lupa kata sandi.
-/// Sesuaikan salah satu acuan sebelum data benar-benar dikirim ke backend.
+/// Halaman Masuk (Login) — FR-03. Autentikasi berbasis username (SRD 1.5).
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -16,23 +14,45 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _identifierController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  String? _error;
+  bool _loading = false;
 
-  void _handleLogin() {
-    // TODO: ganti dengan pemanggilan AuthRepository/REST API sungguhan.
-    // Untuk saat ini, tombol Masuk langsung membuka halaman utama (dummy).
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const MainShell()),
-      (route) => false,
-    );
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (_usernameController.text.trim().isEmpty || _passwordController.text.isEmpty) {
+      setState(() => _error = 'Username dan kata sandi wajib diisi');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    final err = await context.read<AppState>().login(_usernameController.text, _passwordController.text);
+    if (!mounted) return;
+    if (err != null) {
+      setState(() {
+        _loading = false;
+        _error = err;
+      });
+      return;
+    }
+    // Root (MainShell) sudah tampil; tutup halaman Login/Splash di atasnya.
+    Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -50,7 +70,8 @@ class _LoginScreenState extends State<LoginScreen> {
               AppTextField(
                 hint: 'Username',
                 icon: Icons.person_outline_rounded,
-                controller: _identifierController,
+                controller: _usernameController,
+                textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 14),
               AppTextField(
@@ -58,20 +79,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 icon: Icons.lock_outline_rounded,
                 obscure: true,
                 controller: _passwordController,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _handleLogin(),
               ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Fitur pemulihan kata sandi belum tersedia pada versi ini')),
-                    );
-                  },
-                  child: const Text('Lupa kata sandi?', style: TextStyle(color: Color(0xFF2E7D32), fontSize: 12)),
-                ),
-              ),
-              const SizedBox(height: 8),
-              PrimaryButton(label: 'Masuk', onPressed: _handleLogin),
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+              const SizedBox(height: 24),
+              PrimaryButton(label: 'Masuk', onPressed: _handleLogin, loading: _loading),
               const SizedBox(height: 16),
               Center(
                 child: GestureDetector(
